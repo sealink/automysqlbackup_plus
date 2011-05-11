@@ -63,21 +63,6 @@ GREP="`${WHICH} grep`"
 
 
 # XtraBackup Related codes
-if [ "$SANDBOX_BASE" ];
-then
-	MYSQL="`${SANDBOX_BASE}/use`"
-		
-	if ["$HOTBACKUP" = "yes" ];
-	then
-		DEFAULTS_FILE="${SANDBOX_BASE}/my.sandbox.cnf"
-		INNOBACKUP="`${WHICH} innobackupex`"
-
-		install_xtrabackup_requirements
-	fi
-else
-	MYSQL="`${WHICH} mysql`"
-fi
-
 function install_xtrabackup_requirements() {
 	if [ -f "$INNOBACKUP" ]; then
 		echo "XtraBackup is already installed.."
@@ -96,6 +81,22 @@ function install_xtrabackup_requirements() {
 
 	fi
 }
+
+if [ "$SANDBOX_BASE" ];
+then
+	MYSQL=${SANDBOX_BASE}/use
+		
+	if ["$HOTBACKUP" = "yes" ];
+	then
+		DEFAULTS_FILE="${SANDBOX_BASE}/my.sandbox.cnf"
+		INNOBACKUP="`${WHICH} innobackupex`"
+
+		install_xtrabackup_requirements
+	fi
+else
+	MYSQL="`${WHICH} mysql`"
+fi
+
 
 function get_debian_pw() {
 	if [ -r /etc/mysql/debian.cnf ]; then
@@ -235,22 +236,22 @@ return 0
 backup_and_compress () {
 	if [ "${HOTBACKUP}" = "yes" ];
 	then
+		hotbackup ${2}
+	else
 		dbdump ${1} "${2}.sql"
 
-		if [ $? -eq 0];
+		if [ $? -eq 0 ];
 		then
 			compression ${2}
 			BACKUPFILES="${BACKUPFILES} ${2}${SUFFIX}"
 		fi
-	else
-		hotbackup ${2}
 	fi
 
 	return $?
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${2}.tar.gz
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}.tar.gz
 	return $?
 }
 
@@ -288,18 +289,25 @@ else
 fi
 
 # If backing up all DBs on the server
-if [ "${DBNAMES}" = "all" ]; then
-        DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+if [ "${HOTBACKUP}" = "yes" ]; then
+	# DO NOTHING
+	# Keep it as is. This will only be used as part of the file/directory name
 
-	# If DBs are excluded
-	for exclude in ${DBEXCLUDE}
-	do
-		DBNAMES=`${ECHO} ${DBNAMES} | ${SED} "s/\b${exclude}\b//g"`
-	done
+else
+	if [ "${DBNAMES}" = "all" ]; then
 
-        MDBNAMES=${DBNAMES}
+		DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+
+		# If DBs are excluded
+		for exclude in ${DBEXCLUDE}
+		do
+			DBNAMES=`${ECHO} ${DBNAMES} | ${SED} "s/\b${exclude}\b//g"`
+		done
+
+		MDBNAMES=${DBNAMES}
+	fi
 fi
-	
+
 ${ECHO} ======================================================================
 ${ECHO} AutoMySQLBackup VER ${VER}
 ${ECHO} http://sourceforge.net/projects/automysqlbackup/
