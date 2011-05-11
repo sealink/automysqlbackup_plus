@@ -53,7 +53,6 @@ DU="`${WHICH} du`"
 EXPR="`${WHICH} expr`"
 FIND="`${WHICH} find`"
 RM="`${WHICH} rm`"
-MYSQL="`${WHICH} mysql`"
 MYSQLDUMP="`${WHICH} mysqldump`"
 GZIP="`${WHICH} gzip`"
 BZIP2="`${WHICH} bzip2`"
@@ -61,6 +60,42 @@ CP="`${WHICH} cp`"
 HOSTNAMEC="`${WHICH} hostname`"
 SED="`${WHICH} sed`"
 GREP="`${WHICH} grep`"
+
+
+# XtraBackup Related codes
+if [ "$SANDBOX_BASE" ];
+then
+	MYSQL="`${SANDBOX_BASE}/use`"
+		
+	if ["$HOTBACKUP" = "yes" ];
+	then
+		DEFAULTS_FILE="${SANDBOX_BASE}/my.sandbox.cnf"
+		INNOBACKUP="`${WHICH} innobackupex`"
+
+		install_xtrabackup_requirements
+	fi
+else
+	MYSQL="`${WHICH} mysql`"
+fi
+
+function install_xtrabackup_requirements() {
+	if [ -f "$INNOBACKUP" ]; then
+		echo "XtraBackup is already installed.."
+	else
+		echo "Installing xtrabackup..."
+		gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A
+		gpg -a --export CD2EFD2A | apt-key add -
+
+		source /etc/lsb-release
+		XTRABACKUP_SRC=/etc/apt/sources.list.d/xtrabackup.list
+		echo "deb http://repo.percona.com/apt ${DISTRIB_CODENAME} main" > $XTRABACKUP_SRC
+		echo "deb-src http://repo.percona.com/apt ${DISTRIB_CODENAME} main" >> $XTRABACKUP_SRC
+
+		apt-get update
+		apt-get install xtrabackup --yes
+
+	fi
+}
 
 function get_debian_pw() {
 	if [ -r /etc/mysql/debian.cnf ]; then
@@ -123,6 +158,7 @@ exec 7>&2           # Link file descriptor #7 with stderr.
                     # Saves stderr.
 exec 2> ${LOGERR}     # stderr replaced with file ${LOGERR}.
 
+
 # Add --compress mysqldump option to ${OPT}
 if [ "${COMMCOMP}" = "yes" ];
 	then
@@ -170,8 +206,8 @@ fi
 
 # Database dump function
 dbdump () {
-${MYSQLDUMP} --single-transaction --quick --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} ${OPT} ${1} > ${2}
-return $?
+	${MYSQLDUMP} --single-transaction --quick --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} ${OPT} ${1} > ${2}
+	return $?
 }
 
 # Compression function plus latest copy
@@ -196,6 +232,27 @@ fi
 return 0
 }
 
+backup_and_compress () {
+	if [ "${HOTBACKUP}" = "yes" ];
+	then
+		dbdump ${1} "${2}.sql"
+
+		if [ $? -eq 0];
+		then
+			compression ${2}
+			BACKUPFILES="${BACKUPFILES} ${2}${SUFFIX}"
+		fi
+	else
+		hotbackup ${2}
+	fi
+
+	return $?
+}
+
+hotbackup () {
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${2}.tar.gz
+	return $?
+}
 
 # Run command before we begin
 if [ "${PREBACKUP}" ]
@@ -267,13 +324,11 @@ ${ECHO} ======================================================================
 				mkdir -p "${BACKUPDIR}/monthly/${MDB}"
 			fi
 			${ECHO} Monthly Backup of ${MDB}...
-				dbdump "${MDB}" "${BACKUPDIR}/monthly/${MDB}/${MDB}_${DATE}.${M}.${MDB}.sql"
+				backup_and_compress "${MDB}" "${BACKUPDIR}/monthly/${MDB}/${MDB}_${DATE}.${M}.${MDB}"
 				[ $? -eq 0 ] && {
 					${ECHO} "Rotating 5 month backups for ${MDB}"
 					${FIND} "${BACKUPDIR}/monthly/${MDB}" -mtime +150 -type f -exec ${RM} -v {} \; 
 				}
-				compression "${BACKUPDIR}/monthly/${MDB}/${MDB}_${DATE}.${M}.${MDB}.sql"
-				BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/monthly/${MDB}/${MDB}_${DATE}.${M}.${MDB}.sql${SUFFIX}"
 			${ECHO} ----------------------------------------------------------------------
 		done
 	fi
@@ -298,26 +353,22 @@ ${ECHO} ======================================================================
 	if [ ${DNOW} = ${DOWEEKLY} ]; then
 		${ECHO} Weekly Backup of Database \( ${DB} \)
 		${ECHO}
-			dbdump "${DB}" "${BACKUPDIR}/weekly/${DB}/${DB}_week.${W}.${DATE}.sql"
+			backup_and_compress "${DB}" "${BACKUPDIR}/weekly/${DB}/${DB}_week.${W}.${DATE}"
 			[ $? -eq 0 ] && {
 				${ECHO} Rotating 5 weeks Backups...
 				${FIND} "${BACKUPDIR}/weekly/${DB}" -mtime +35 -type f -exec ${RM} -v {} \; 
 			}
-			compression "${BACKUPDIR}/weekly/${DB}/${DB}_week.${W}.${DATE}.sql"
-			BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/weekly/${DB}/${DB}_week.${W}.${DATE}.sql${SUFFIX}"
 		${ECHO} ----------------------------------------------------------------------
 	
 	# Daily Backup
 	else
 		${ECHO} Daily Backup of Database \( ${DB} \)
 		${ECHO}
-			dbdump "${DB}" "${BACKUPDIR}/daily/${DB}/${DB}_${DATE}.${DOW}.sql"
+			backup_and_compress "${DB}" "${BACKUPDIR}/daily/${DB}/${DB}_${DATE}.${DOW}"
 			[ $? -eq 0 ] && {
 				${ECHO} Rotating last weeks Backup...
 				${FIND} "${BACKUPDIR}/daily/${DB}" -mtime +6 -type f -exec ${RM} -v {} \; 
 			}
-			compression "${BACKUPDIR}/daily/${DB}/${DB}_${DATE}.${DOW}.sql"
-			BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/daily/${DB}/${DB}_${DATE}.${DOW}.sql${SUFFIX}"
 		${ECHO} ----------------------------------------------------------------------
 	fi
 	done
@@ -331,13 +382,11 @@ ${ECHO} ======================================================================
 	# Monthly Full Backup of all Databases
 	if [ ${DOM} = "01" ]; then
 		${ECHO} Monthly full Backup of \( ${MDBNAMES} \)...
-			dbdump "${MDBNAMES}" "${BACKUPDIR}/monthly/${DATE}.${M}.all-databases.sql"
+			backup_and_compress "${MDBNAMES}" "${BACKUPDIR}/monthly/${DATE}.${M}.all-databases"
 			[ $? -eq 0 ] && {
 				${ECHO} "Rotating 5 month backups."
 				${FIND} "${BACKUPDIR}/monthly" -mtime +150 -type f -exec ${RM} -v {} \; 
 			}
-			compression "${BACKUPDIR}/monthly/${DATE}.${M}.all-databases.sql"
-			BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/monthly/${DATE}.${M}.all-databases.sql${SUFFIX}"
 		${ECHO} ----------------------------------------------------------------------
 	fi
 
@@ -346,13 +395,11 @@ ${ECHO} ======================================================================
 		${ECHO} Weekly Backup of Databases \( ${DBNAMES} \)
 		${ECHO}
 		${ECHO}
-			dbdump "${DBNAMES}" "${BACKUPDIR}/weekly/week.${W}.${DATE}.sql"
+			backup_and_compress "${DBNAMES}" "${BACKUPDIR}/weekly/week.${W}.${DATE}"
 			[ $? -eq 0 ] && {
 				${ECHO} Rotating 5 weeks Backups...
 				${FIND} "${BACKUPDIR}/weekly/" -mtime +35 -type f -exec ${RM} -v {} \; 
 			}
-			compression "${BACKUPDIR}/weekly/week.${W}.${DATE}.sql"
-			BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/weekly/week.${W}.${DATE}.sql${SUFFIX}"
 		${ECHO} ----------------------------------------------------------------------
 		
 	# Daily Backup
@@ -360,13 +407,11 @@ ${ECHO} ======================================================================
 		${ECHO} Daily Backup of Databases \( ${DBNAMES} \)
 		${ECHO}
 		${ECHO}
-			dbdump "${DBNAMES}" "${BACKUPDIR}/daily/${DATE}.${DOW}.sql"
+			backup_and_compress "${DBNAMES}" "${BACKUPDIR}/daily/${DATE}.${DOW}"
 			[ $? -eq 0 ] && {
 				${ECHO} Rotating last weeks Backup...
 				${FIND} "${BACKUPDIR}/daily" -mtime +6 -type f -exec ${RM} -v {} \; 
 			}
-			compression "${BACKUPDIR}/daily/${DATE}.${DOW}.sql"
-			BACKUPFILES="${BACKUPFILES} ${BACKUPDIR}/daily/${DATE}.${DOW}.sql${SUFFIX}"
 		${ECHO} ----------------------------------------------------------------------
 	fi
 ${ECHO} Backup End Time `${DATEC}`
