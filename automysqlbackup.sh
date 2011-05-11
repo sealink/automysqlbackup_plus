@@ -86,7 +86,7 @@ if [ "$SANDBOX_BASE" ];
 then
 	MYSQL=${SANDBOX_BASE}/use
 		
-	if ["$HOTBACKUP" = "yes" ];
+	if [ "$HOTBACKUP" = "yes" ];
 	then
 		DEFAULTS_FILE="${SANDBOX_BASE}/my.sandbox.cnf"
 		INNOBACKUP="`${WHICH} innobackupex`"
@@ -214,46 +214,60 @@ dbdump () {
 # Compression function plus latest copy
 SUFFIX=""
 compression () {
-if [ "${COMP}" = "gzip" ]; then
-	${GZIP} -f "${1}"
-	${ECHO}
-	${ECHO} Backup Information for "${1}"
-	${GZIP} -l "${1}.gz"
-	SUFFIX=".gz"
-elif [ "${COMP}" = "bzip2" ]; then
-	${ECHO} Compression information for "${1}.bz2"
-	${BZIP2} -f -v ${1} 2>&1
-	SUFFIX=".bz2"
-else
-	${ECHO} "No compression option set, check advanced settings"
-fi
-if [ "${LATEST}" = "yes" ]; then
-	${CP} ${1}${SUFFIX} "${BACKUPDIR}/latest/"
-fi	
-return 0
+	if [ "${COMP}" = "gzip" ]; then
+		${GZIP} -f "${1}"
+		${ECHO}
+		${ECHO} "Backup Information for ${1}"
+		${GZIP} -l "${1}.gz"
+		SUFFIX=".gz"
+	elif [ "${COMP}" = "bzip2" ]; then
+		${ECHO} "Compression information for ${1}.bz2"
+		${BZIP2} -f -v ${1} 2>&1
+		SUFFIX=".bz2"
+	else
+		${ECHO} "No compression option set, check advanced settings"
+	fi
+
+	return 0
+}
+
+hotbackup () {
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}.tar.gz
+
+	return $?
+}
+
+copylatest () {
+	if [ "${LATEST}" = "yes" ]; then
+		${CP} ${1} "${BACKUPDIR}/latest/"
+	fi	
+
+	return $?
 }
 
 backup_and_compress () {
-	if [ "${HOTBACKUP}" = "yes" ];
-	then
-		hotbackup ${2}
+	if [ "${HOTBACKUP}" = "yes" ]; then
+		FNAME="${2}.tar.gz"
+		hotbackup ${FNAME} 
+		
+		if [ $? -eq 0 ]; then
+			copylatest ${FNAME}
+			BACKUPFILES="${BACKUPFILES} ${FNAME}"
+		fi
 	else
-		dbdump ${1} "${2}.sql"
+		FNAME="${2}.sql"
+		dbdump ${1} ${FNAME}
 
-		if [ $? -eq 0 ];
-		then
-			compression ${2}
-			BACKUPFILES="${BACKUPFILES} ${2}${SUFFIX}"
+		if [ $? -eq 0 ]; then
+			compression ${FNAME}
+			copylatest ${FNAME}${SUFFIX}
+			BACKUPFILES="${BACKUPFILES} ${FNAME}${SUFFIX}"
 		fi
 	fi
 
 	return $?
 }
 
-hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}.tar.gz
-	return $?
-}
 
 # Run command before we begin
 if [ "${PREBACKUP}" ]
@@ -289,23 +303,18 @@ else
 fi
 
 # If backing up all DBs on the server
-if [ "${HOTBACKUP}" = "yes" ]; then
-	# DO NOTHING
-	# Keep it as is. This will only be used as part of the file/directory name
+# Keep it as is if HOTBACKUP is used. This will only be used as part of the file/directory name
+if [ "${HOTBACKUP}" != "yes" ] && [ "${DBNAMES}" = "all" ]; then
 
-else
-	if [ "${DBNAMES}" = "all" ]; then
+	DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
 
-		DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+	# If DBs are excluded
+	for exclude in ${DBEXCLUDE}
+	do
+		DBNAMES=`${ECHO} ${DBNAMES} | ${SED} "s/\b${exclude}\b//g"`
+	done
 
-		# If DBs are excluded
-		for exclude in ${DBEXCLUDE}
-		do
-			DBNAMES=`${ECHO} ${DBNAMES} | ${SED} "s/\b${exclude}\b//g"`
-		done
-
-		MDBNAMES=${DBNAMES}
-	fi
+	MDBNAMES=${DBNAMES}
 fi
 
 ${ECHO} ======================================================================
