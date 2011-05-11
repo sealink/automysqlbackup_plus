@@ -232,7 +232,7 @@ compression () {
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}.tar.gz
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}
 
 	return $?
 }
