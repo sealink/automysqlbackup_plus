@@ -240,7 +240,7 @@ compression () {
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ &> ${LOGXTRADB} | gzip - > ${1}
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
 
 	return $?
 }
@@ -516,6 +516,8 @@ else
 			${CAT} "${LOGERR}"
 	else
 		${CAT} "${LOGFILE}"
+		${ECHO}
+		${ECHO} "#### OUTPUT FROM XTRADBBACKUP ####"
 		${CAT} "${LOGXTRADB}"
 	fi	
 fi
