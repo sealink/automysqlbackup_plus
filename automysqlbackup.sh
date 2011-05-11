@@ -63,22 +63,27 @@ GREP="`${WHICH} grep`"
 
 
 # XtraBackup Related codes
+LSBRELEASE=/etc/lsb-release
 function install_xtrabackup_requirements() {
 	if [ -f "$INNOBACKUP" ]; then
 		echo "XtraBackup is already installed.."
 	else
-		echo "Installing xtrabackup..."
-		gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A
-		gpg -a --export CD2EFD2A | apt-key add -
+		if [ -e ${LSBRELEASE} ]; then
+			echo "Installing xtrabackup..."
+			gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A
+			gpg -a --export CD2EFD2A | apt-key add -
 
-		source /etc/lsb-release
-		XTRABACKUP_SRC=/etc/apt/sources.list.d/xtrabackup.list
-		echo "deb http://repo.percona.com/apt ${DISTRIB_CODENAME} main" > $XTRABACKUP_SRC
-		echo "deb-src http://repo.percona.com/apt ${DISTRIB_CODENAME} main" >> $XTRABACKUP_SRC
+			source $LSBRELEASE 
+			XTRABACKUP_SRC=/etc/apt/sources.list.d/xtrabackup.list
+			${ECHO} "deb http://repo.percona.com/apt ${DISTRIB_CODENAME} main" > $XTRABACKUP_SRC
+			${ECHO} "deb-src http://repo.percona.com/apt ${DISTRIB_CODENAME} main" >> $XTRABACKUP_SRC
 
-		apt-get update
-		apt-get install xtrabackup --yes
-
+			apt-get update
+			apt-get install xtrabackup --yes
+		else
+			${ECHO} This script only supports Ubuntu Linux.
+			exit 1
+		fi
 	fi
 }
 
