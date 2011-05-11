@@ -151,6 +151,7 @@ W=`${DATEC} +%V`							# Week Number e.g 37
 VER=2.5.1									# Version Number
 LOGFILE=${BACKUPDIR}/${DBHOST}-`${DATEC} +%N`.log		# Logfile Name
 LOGERR=${BACKUPDIR}/ERRORS_${DBHOST}-`${DATEC} +%N`.log		# Logfile Name
+LOGXTRADB=${BACKUPDIR}/EXTRADB_${DBHOST}-`${DATEC} +%N`.log		# Logfile Name
 BACKUPFILES=""
 OPT="--quote-names --opt"			# OPT string for use with mysqldump ( see man mysqldump )
 
@@ -163,6 +164,8 @@ touch ${LOGERR}
 exec 7>&2           # Link file descriptor #7 with stderr.
                     # Saves stderr.
 exec 2> ${LOGERR}     # stderr replaced with file ${LOGERR}.
+
+touch ${LOGXTRADB}	# For logging output of INNODBBACKUP as it seems to only utilise STDERR
 
 
 # Add --compress mysqldump option to ${OPT}
@@ -237,7 +240,7 @@ compression () {
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ | gzip - > ${1}
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ &> ${LOGXTRADB} | gzip - > ${1}
 
 	return $?
 }
@@ -479,6 +482,7 @@ then
 		mutt -s "${ERRORNOTE} MySQL Backup Log and SQL Files for ${HOST} - ${DATE}" ${BACKUPFILES} ${MAILADDR} < ${LOGFILE}		#send via mutt
 	else
 		${CAT} "${LOGFILE}" | mail -s "WARNING! - MySQL Backup exceeds set maximum attachment size on ${HOST} - ${DATE}" ${MAILADDR}
+		${CAT} "${LOGXTRADB}" | mail -s "XtraBackup Log for ${HOST} - ${DATE}" ${MAILADDR}
 	fi
 elif [ "${MAILCONTENT}" = "log" ]
 then
@@ -486,6 +490,7 @@ then
 	if [ -s "${LOGERR}" ]
 		then
 			${CAT} "${LOGERR}" | mail -s "ERRORS REPORTED: MySQL Backup error Log for ${HOST} - ${DATE}" ${MAILADDR}
+			${CAT} "${LOGXTRADB}" | mail -s "XtraBackup Log for ${HOST} - ${DATE}" ${MAILADDR}
 	fi	
 elif [ "${MAILCONTENT}" = "quiet" ]
 then
@@ -493,11 +498,17 @@ then
 		then
 			${CAT} "${LOGERR}" | mail -s "ERRORS REPORTED: MySQL Backup error Log for ${HOST} - ${DATE}" ${MAILADDR}
 			${CAT} "${LOGFILE}" | mail -s "MySQL Backup Log for ${HOST} - ${DATE}" ${MAILADDR}
+			${CAT} "${LOGXTRADB}" | mail -s "XtraBackup Log for ${HOST} - ${DATE}" ${MAILADDR}
 	fi
 else
 	if [ -s "${LOGERR}" ]
 		then
 			${CAT} "${LOGFILE}"
+
+			${ECHO}
+			${ECHO} "#### OUTPUT FROM XTRADBBACKUP ####"
+			${CAT} "${LOGXTRADB}"
+
 			${ECHO}
 			${ECHO} "###### WARNING ######"
 			${ECHO} "Errors reported during AutoMySQLBackup execution.. Backup failed"
@@ -505,6 +516,7 @@ else
 			${CAT} "${LOGERR}"
 	else
 		${CAT} "${LOGFILE}"
+		${CAT} "${LOGXTRADB}"
 	fi	
 fi
 
@@ -518,5 +530,6 @@ fi
 # Clean up Logfile
 eval ${RM} -f "${LOGFILE}"
 eval ${RM} -f "${LOGERR}"
+eval ${RM} -f "${LOGXTRADB}"
 
 exit ${STATUS}
