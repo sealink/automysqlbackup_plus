@@ -63,13 +63,15 @@ GREP="`${WHICH} grep`"
 
 
 # XtraBackup Related codes
-LSBRELEASE=/etc/lsb-release
 function install_xtrabackup_requirements() {
+	LSBRELEASE=/etc/lsb-release
+	INNOBACKUP="`${WHICH} innobackupex`"
+
 	if [ -f "$INNOBACKUP" ]; then
-		echo "XtraBackup is already installed.."
+		${ECHO} "XtraBackup is already installed.."
 	else
 		if [ -e ${LSBRELEASE} ]; then
-			echo "Installing xtrabackup..."
+			${ECHO} "Installing xtrabackup..."
 			gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A
 			gpg -a --export CD2EFD2A | apt-key add -
 
@@ -87,19 +89,16 @@ function install_xtrabackup_requirements() {
 	fi
 }
 
-if [ "$SANDBOX_BASE" ];
-then
+if [ "$SANDBOX_BASE" ]; then
 	MYSQL=${SANDBOX_BASE}/use
-		
-	if [ "$HOTBACKUP" = "yes" ];
-	then
-		DEFAULTS_FILE="${SANDBOX_BASE}/my.sandbox.cnf"
-		INNOBACKUP="`${WHICH} innobackupex`"
-
-		install_xtrabackup_requirements
-	fi
+	DEFAULTS_FILE_OPTION="--defaults-file=${SANDBOX_BASE}/my.sandbox.cnf"
 else
 	MYSQL="`${WHICH} mysql`"
+	DEFAULTS_FILE_OPTION=""
+fi
+
+if [ "$HOTBACKUP" = "yes" ]; then
+	install_xtrabackup_requirements
 fi
 
 
@@ -240,7 +239,7 @@ compression () {
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} --defaults-file=${DEFAULTS_FILE} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
+	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
 
 	return $?
 }
