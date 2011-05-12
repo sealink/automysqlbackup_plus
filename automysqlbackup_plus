@@ -24,8 +24,6 @@
 # (Detailed instructions below variables)
 #=====================================================================
 #set -x
-CONFIGFILE="./automysqlhotbackup.conf"
-
 if [ -r ${CONFIGFILE} ]; then
 	# Read the configfile if it's existing and readable
 	source ${CONFIGFILE}
