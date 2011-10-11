@@ -244,7 +244,7 @@ hotbackup () {
 
 copylatest () {
 	if [ "${LATEST}" = "yes" ]; then
-		${CP} ${1} "${BACKUPDIR}/latest/"
+		ln -s ${1} "${BACKUPDIR}/latest/${1}"
 	fi	
 
 	return $?
