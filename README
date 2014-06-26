@@ -1,5 +1,5 @@
 #=====================================================================
-# Options documantation
+# Options documentation
 #=====================================================================
 # Set USERNAME and PASSWORD of a user that has the appropriate permissions
 # to backup ALL databases. (See mysql documentation for details)
@@ -27,7 +27,7 @@
 # You can change the backup storage location from /backups to anything
 # you like by using the BACKUPDIR setting..
 #
-# The MAILCONTENT and MAILADDR options and pretty self explanitory, use
+# The MAILCONTENT and MAILADDR options and pretty self explanatory, use
 # these to have the backup log mailed to you at any email address or multiple
 # email addresses in a space seperated list.
 # (If you set mail content to "log" you will require access to the "mail" program
@@ -45,27 +45,27 @@
 # to set executable permission. You can also copy the script to
 # /etc/cron.daily to have it execute automatically every night or simply
 # place a symlink in /etc/cron.daily to the file if you wish to keep it 
-# somwhere else.
-# NOTE:On Debian copy the file with no extention for it to be run
+# somewhere else.
+# NOTE:On Debian copy the file with no extension for it to be run
 # by cron e.g just name the file "automysqlbackup"
 #
-# Thats it..
+# That's it..
 #
 #
 # === Advanced options doc's ===
 #
 # The list of MDBNAMES is the DB's to be backed up only monthly. You should
-# always include "mysql" in this list to backup your user/password
+# always include "mysql" in this list to back up your user/password
 # information along with any other DBs that you only feel need to
 # be backed up monthly. (if using a hosted server then you should
 # probably remove "mysql" as your provider will be backing this up)
 # NOTE: If DBNAMES="all" then MDBNAMES has no effect as all DBs will be backed
 # up anyway.
 #
-# If you set DBNAMES="all" you can configure the option DBEXCLUDE. Other
-# wise this option will not be used.
+# If you set DBNAMES="all" you can configure the option DBEXCLUDE.
+# Otherwise this option will not be used.
 # This option can be used if you want to backup all dbs, but you want 
-# exclude some of them. (eg. a db is to big).
+# exclude some of them. (eg. a db is too big).
 #
 # Set CREATE_DATABASE to "yes" (the default) if you want your SQL-Dump to create
 # a database with the same name as the original database when restoring.
@@ -122,7 +122,7 @@
 # Please Note!!
 #=====================================================================
 #
-# I take no resposibility for any data loss or corruption when using
+# I take no responsibility for any data loss or corruption when using
 # this script..
 # This script will not help in the event of a hard drive crash. If a 
 # copy of the backup has not be stored offline or on another PC..
@@ -147,5 +147,5 @@
 # NOTE: Make sure you use "<" and not ">" in the above command because
 # you are piping the file.sql to mysql and not the other way around.
 #
-# Lets hope you never have to use this.. :)
+# Let's hope you never have to use this.. :)
 #
