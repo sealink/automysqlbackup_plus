@@ -237,40 +237,40 @@ compression () {
 }
 
 hotbackup () {
-	${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
+  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
 
-	return $?
+  return $?
 }
 
 copylatest () {
-	if [ "${LATEST}" = "yes" ]; then
-		ln -s ${1} "${BACKUPDIR}/latest/${1}"
-	fi	
+  if [ "${LATEST}" = "yes" ]; then
+    ln -s ${1} "${BACKUPDIR}/latest/${1}"
+  fi
 
-	return $?
+  return $?
 }
 
 backup_and_compress () {
-	if [ "${HOTBACKUP}" = "yes" ]; then
-		FNAME="${2}.tar.gz"
-		hotbackup ${FNAME} 
-		
-		if [ $? -eq 0 ]; then
-			copylatest ${FNAME}
-			BACKUPFILES="${BACKUPFILES} ${FNAME}"
-		fi
-	else
-		FNAME="${2}.sql"
-		dbdump ${1} ${FNAME}
+  if [ "${HOTBACKUP}" = "yes" ]; then
+    FNAME="${2}.tar.gz"
+    hotbackup ${FNAME}
 
-		if [ $? -eq 0 ]; then
-			compression ${FNAME}
-			copylatest ${FNAME}${SUFFIX}
-			BACKUPFILES="${BACKUPFILES} ${FNAME}${SUFFIX}"
-		fi
-	fi
+    if [ $? -eq 0 ]; then
+      copylatest ${FNAME}
+      BACKUPFILES="${BACKUPFILES} ${FNAME}"
+    fi
+  else
+    FNAME="${2}.sql"
+    dbdump ${1} ${FNAME}
 
-	return $?
+    if [ $? -eq 0 ]; then
+      compression ${FNAME}
+      copylatest ${FNAME}${SUFFIX}
+      BACKUPFILES="${BACKUPFILES} ${FNAME}${SUFFIX}"
+    fi
+  fi
+
+  return $?
 }
 
 
