@@ -287,7 +287,7 @@ if [ "${PREBACKUP}" ]
 fi
 
 
-if [ "${SEPDIR}" = "yes" ]; then # Check if CREATE DATABSE should be included in Dump
+if [ "${SEPDIR}" = "yes" ]; then # Check if CREATE DATABASE should be included in Dump
 	if [ "${CREATE_DATABASE}" = "no" ]; then
 		OPT="${OPT} --no-create-db"
 	else
