@@ -110,6 +110,11 @@ then
     exit 1
   else
     ${ECHO} "Apply log option selected."
+    # Create temporary backup directory for applying log, if necessary
+    if [ ! -e "${BACKUPTMPDIR}" ] # Holding directory set but doesn't exist
+    then
+      mkdir -p "${BACKUPTMPDIR}"
+    fi
   fi
 fi
 
@@ -218,12 +223,6 @@ then
 		mkdir -p "${BACKUPDIR}/latest"
 	fi
 eval ${RM} -fv "${BACKUPDIR}/latest/*.gz"
-fi
-
-# Create temporary backup directory for applying log, if necessary
-if [ "${APPLYLOGTOBACKUP}" = "true" ] && [ ! -e "${BACKUPTMPDIR}" ]
-  then
-  mkdir -p "${BACKUPTMPDIR}"
 fi
 
 # Functions
