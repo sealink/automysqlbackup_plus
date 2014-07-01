@@ -100,6 +100,19 @@ if [ "$HOTBACKUP" = "yes" ]; then
 	install_xtrabackup_requirements
 fi
 
+APPLYLOGTOBACKUP=false
+# Check if we want to apply log
+if [ -n "${APPLYLOG}" ] && [ "${APPLYLOG}" = "yes" ]
+then
+  if [ -z "${BACKUPTMPDIR}" ] # Holding directory not set
+  then
+    ${ECHO} "Apply log enabled but backup temp directory is not set."
+    exit 1
+  else
+    ${ECHO} "Apply log option selected."
+    APPLYLOGTOBACKUP=true
+  fi
+fi
 
 function get_debian_pw() {
 	if [ -r /etc/mysql/debian.cnf ]; then
@@ -208,6 +221,11 @@ then
 eval ${RM} -fv "${BACKUPDIR}/latest/*.gz"
 fi
 
+# Create temporary backup directory for applying log, if necessary
+if [ "${APPLYLOGTOBACKUP}" = "true" ] && [ ! -e "${BACKUPTMPDIR}" ]
+  then
+  mkdir -p "${BACKUPTMPDIR}"
+fi
 
 # Functions
 
@@ -276,7 +294,11 @@ copylatest () {
 backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
     FNAME="${2}.tar.gz"
-    hotbackup ${FNAME}
+    if [ "${APPLYLOGTOBACKUP}" = true ]; then
+      hotbackup_with_applylog ${FNAME}
+    else
+      hotbackup ${FNAME}
+    fi
 
     if [ $? -eq 0 ]; then
       copylatest ${FNAME}
