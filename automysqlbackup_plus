@@ -52,6 +52,7 @@ EXPR="`${WHICH} expr`"
 FIND="`${WHICH} find`"
 RM="`${WHICH} rm`"
 MYSQLDUMP="`${WHICH} mysqldump`"
+TAR="`${WHICH} tar`"
 GZIP="`${WHICH} gzip`"
 BZIP2="`${WHICH} bzip2`"
 CP="`${WHICH} cp`"
@@ -238,6 +239,28 @@ compression () {
 
 hotbackup () {
   ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --slave-info --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
+
+  return $?
+}
+
+hotbackup_with_applylog () {
+  # Generate a timestamp, same format as innobackupex
+  TIMESTAMP=`date +%Y-%m-%d_%H-%M-%S`
+
+  # Ensure there is no such directory
+  # Otherwise, innobackup breaks
+  # Also we are going to delete it, so we should check that we don't delete existing files
+  if [ -f "${BACKUPTMPDIR}/${TIMESTAMP}" ];  then
+    ${ECHO} "Attemped to store intermediate backup in an existing path!"
+    exit 1
+  fi
+
+  # Then:
+  # Make the backup, automatic timestamp disabled so that we can know the exact backup location
+  # Apply the log
+  # Tar it up
+  # Remove intermediate files
+  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --slave-info  --no-timestamp "${BACKUPTMPDIR}/${TIMESTAMP}" 2> ${LOGXTRADB} && ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --apply-log "${BACKUPTMPDIR}/${TIMESTAMP}" 2> ${LOGXTRADB} && ${TAR} -czf "${1}" -C "${BACKUPTMPDIR}/${TIMESTAMP}" . && ${RM} -rf "${BACKUPTMPDIR}/${TIMESTAMP}"   
 
   return $?
 }
