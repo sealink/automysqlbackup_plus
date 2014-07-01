@@ -255,29 +255,31 @@ compression () {
 }
 
 hotbackup () {
-  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --slave-info --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
-
+  ${INNOBACKUP} ${1} --slave-info --stream=tar ./ 2> ${LOGXTRADB} | gzip - > "${2}"
   return $?
 }
 
 hotbackup_with_applylog () {
   # Generate a timestamp, same format as innobackupex
   TIMESTAMP=`date +%Y-%m-%d_%H-%M-%S`
+  BACKUP_TARGET="${BACKUPTMPDIR}/${TIMESTAMP}"
 
   # Ensure there is no such directory
   # Otherwise, innobackup breaks
   # Also we are going to delete it, so we should check that we don't delete existing files
-  if [ -f "${BACKUPTMPDIR}/${TIMESTAMP}" ];  then
+  if [ -f "${BACKUP_TARGET}" ];  then
     ${ECHO} "Attemped to store intermediate backup in an existing path!"
     exit 1
   fi
 
-  # Then:
   # Make the backup, automatic timestamp disabled so that we can know the exact backup location
+  ${INNOBACKUP} ${1} --slave-info  --no-timestamp "${BACKUP_TARGET}" 2> ${LOGXTRADB} && \
   # Apply the log
+  ${INNOBACKUP} ${1} --apply-log "${BACKUP_TARGET}" 2> ${LOGXTRADB} && \
   # Tar it up
+  ${TAR} -czf "${2}" -C "${BACKUP_TARGET}" . &&\
   # Remove intermediate files
-  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --slave-info  --no-timestamp "${BACKUPTMPDIR}/${TIMESTAMP}" 2> ${LOGXTRADB} && ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --apply-log "${BACKUPTMPDIR}/${TIMESTAMP}" 2> ${LOGXTRADB} && ${TAR} -czf "${1}" -C "${BACKUPTMPDIR}/${TIMESTAMP}" . && ${RM} -rf "${BACKUPTMPDIR}/${TIMESTAMP}"   
+  ${RM} -rf "${BACKUP_TARGET}"
 
   return $?
 }
@@ -292,11 +294,12 @@ copylatest () {
 
 backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
+    INNO_OPTS="--user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST}"
     FNAME="${2}.tar.gz"
     if [ "${APPLYLOG}" = yes ]; then
-      hotbackup_with_applylog ${FNAME}
+      hotbackup_with_applylog "${INNO_OPTS}" "${FNAME}"
     else
-      hotbackup ${FNAME}
+      hotbackup "${INNO_OPTS}" "${FNAME}"
     fi
 
     if [ $? -eq 0 ]; then
