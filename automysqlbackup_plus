@@ -100,9 +100,9 @@ if [ "$HOTBACKUP" = "yes" ]; then
 	install_xtrabackup_requirements
 fi
 
-APPLYLOGTOBACKUP=false
-# Check if we want to apply log
-if [ -n "${APPLYLOG}" ] && [ "${APPLYLOG}" = "yes" ]
+# Check if we want to apply log, set to 'no' if not set
+: ${APPLYLOG:="no"}
+if [ "${APPLYLOG}" = "yes" ]
 then
   if [ -z "${BACKUPTMPDIR}" ] # Holding directory not set
   then
@@ -110,7 +110,6 @@ then
     exit 1
   else
     ${ECHO} "Apply log option selected."
-    APPLYLOGTOBACKUP=true
   fi
 fi
 
@@ -294,7 +293,7 @@ copylatest () {
 backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
     FNAME="${2}.tar.gz"
-    if [ "${APPLYLOGTOBACKUP}" = true ]; then
+    if [ "${APPLYLOG}" = yes ]; then
       hotbackup_with_applylog ${FNAME}
     else
       hotbackup ${FNAME}
