@@ -237,7 +237,7 @@ compression () {
 }
 
 hotbackup () {
-  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
+  ${INNOBACKUP} --user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST} --slave-info --stream=tar ./ 2> ${LOGXTRADB} | gzip - > ${1}
 
   return $?
 }
