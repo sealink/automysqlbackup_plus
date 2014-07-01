@@ -296,7 +296,7 @@ backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
     INNO_OPTS="--user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST}"
     FNAME="${2}.tar.gz"
-    if [ "${APPLYLOG}" = yes ]; then
+    if [ "${APPLYLOG}" = "yes" ]; then
       hotbackup_with_applylog "${INNO_OPTS}" "${FNAME}"
     else
       hotbackup "${INNO_OPTS}" "${FNAME}"
