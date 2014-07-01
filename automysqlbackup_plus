@@ -204,7 +204,7 @@ then
 	then
 		mkdir -p "${BACKUPDIR}/latest"
 	fi
-eval ${RM} -fv "${BACKUPDIR}/latest/*"
+eval ${RM} -fv "${BACKUPDIR}/latest/*.gz"
 fi
 
 
