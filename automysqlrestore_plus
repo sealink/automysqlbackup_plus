@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Verify required variables are set
+
+if [ -r "${CONFIGFILE}" ]; then
+  . ${CONFIGFILE}
+else
+  echo "Unreable config file ${CONFIGFILE}"
+  exit 1
+fi
+
+if [ -d "${BACKUPDIR}" ]; then
+  echo "Looking for backup in ${BACKUPDIR}"
+else
+  echo "Unusable backup directory."
+  exit 1
+fi
+
+TARFILE=$( find "${BACKUPDIR}" -maxdepth 1 -type f -name "*.gz" -printf "%T@ %p\n" |
+           sort -n |
+           cut -d' ' -f 2 |
+           tail -n 1)
+
+if [ -r "${TARFILE}" ]; then
+  echo "Found backup file ${TARFILE}"
+else
+  "No backup file found."
+  exit 1
+fi
+
+DATADIR=""
+if [ -n "$SANDBOX_BASE" ]; then
+  echo "Sandbox set: ${SANDBOX_BASE}"
+  DATADIR="${SANDBOX_BASE}"
+else
+  echo "Sandbox not set."
+  echo "This script is only designed to restore to sandboxes."
+  exit 1
+fi
+
+# Restore the database backup from the given location to the given target
+
+mkdir "${DATADIR}/data.new"
+cp "${TARFILE}" "${DATADIR}/data.new"
+cd "${DATADIR}/data.new"
+tar xzf $(basename "${TARFILE}")
+rm -f $(basename "${TARFILE}")
+cd "${DATADIR}"
+"${DATADIR}/stop"
+mv "${DATADIR}/data" "${DATADIR}/data.old"
+mv "${DATADIR}/data.new" "${DATADIR}/data"
+"${DATADIR}/start"
+rm -rf "${DATADIR}/data.old"
+
+exit 0
