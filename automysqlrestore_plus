@@ -5,7 +5,7 @@
 if [ -r "${CONFIGFILE}" ]; then
   . ${CONFIGFILE}
 else
-  echo "Unreable config file ${CONFIGFILE}"
+  echo "Unreadable config file ${CONFIGFILE}"
   exit 1
 fi
 
