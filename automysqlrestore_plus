@@ -38,6 +38,12 @@ else
   exit 1
 fi
 
+if "${DATADIR}/my sql -e 'SELECT @@version;'" ; then
+  echo "Successfully connected to MySQL sandbox in ${DATADIR}".
+else
+  echo "Unable to connect to MySQL sandbox in ${DATADIR}".
+  exit 1
+fi
 # Restore the database backup from the given location to the given target
 
 mkdir "${DATADIR}/data.new"
