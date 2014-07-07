@@ -16,13 +16,13 @@ else
   exit 1
 fi
 
-TARFILE=$( find "${BACKUPDIR}" -maxdepth 1 -type f -name "*.gz" -printf "%T@ %p\n" |
+GZIPFILE=$( find "${BACKUPDIR}" -maxdepth 1 -type f -name "*.gz" -printf "%T@ %p\n" |
            sort -n |
            cut -d' ' -f 2 |
            tail -n 1)
 
-if [ -r "${TARFILE}" ]; then
-  echo "Found backup file ${TARFILE}"
+if [ -r "${GZIPFILE}" ]; then
+  echo "Found backup file ${GZIPFILE}"
 else
   "No backup file found."
   exit 1
@@ -44,18 +44,24 @@ else
   echo "Unable to connect to MySQL sandbox in ${DATADIR}".
   exit 1
 fi
+
+restore_from_hot_backup () {
+  mkdir "${DATADIR}/data.new" && \
+  echo "Copying latest hot backup ${GZIPFILE}" && \
+  cp "${GZIPFILE}" "${DATADIR}/data.new" && \
+  cd "${DATADIR}/data.new" && \
+  echo "Extracting..." && \
+  tar xzf $(basename "${GZIPFILE}") && \
+  rm -f $(basename "${GZIPFILE}") && \
+  cd "${DATADIR}" && \
+  "${DATADIR}/stop" && \
+  mv "${DATADIR}/data" "${DATADIR}/data.old" && \
+  mv "${DATADIR}/data.new" "${DATADIR}/data" && \
+  "${DATADIR}/start" && \
+  rm -rf "${DATADIR}/data.old" && \
+
+  return $?
+}
+
 # Restore the database backup from the given location to the given target
-
-mkdir "${DATADIR}/data.new"
-cp "${TARFILE}" "${DATADIR}/data.new"
-cd "${DATADIR}/data.new"
-tar xzf $(basename "${TARFILE}")
-rm -f $(basename "${TARFILE}")
-cd "${DATADIR}"
-"${DATADIR}/stop"
-mv "${DATADIR}/data" "${DATADIR}/data.old"
-mv "${DATADIR}/data.new" "${DATADIR}/data"
-"${DATADIR}/start"
-rm -rf "${DATADIR}/data.old"
-
-exit 0
+restore_from_hot_backup && echo "Restore successful." || echo "Restore failed."
