@@ -64,4 +64,5 @@ restore_from_hot_backup () {
 }
 
 # Restore the database backup from the given location to the given target
-restore_from_hot_backup && echo "Restore successful." || echo "Restore failed."
+restore_from_hot_backup && echo "Restore successful." || status=$?; echo "Restore failed."; $(exit $status)
+
