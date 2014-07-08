@@ -38,7 +38,7 @@ else
   exit 1
 fi
 
-if "${DATADIR}/my sql -e 'SELECT @@version;'" ; then
+if "${DATADIR}"/my sql -e 'SELECT @@version;' ; then
   echo "Successfully connected to MySQL sandbox in ${DATADIR}".
 else
   echo "Unable to connect to MySQL sandbox in ${DATADIR}".
@@ -64,5 +64,11 @@ restore_from_hot_backup () {
 }
 
 # Restore the database backup from the given location to the given target
-restore_from_hot_backup && echo "Restore successful." || status=$?; echo "Restore failed."; $(exit $status)
-
+restore_from_hot_backup
+status=$?
+if [ $status -eq 0 ]; then
+  echo "Restore successful."
+else
+  echo "Restore failed."
+fi
+exit $status
