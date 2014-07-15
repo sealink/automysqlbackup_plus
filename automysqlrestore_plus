@@ -47,12 +47,9 @@ fi
 
 restore_from_hot_backup () {
   mkdir "${DATADIR}/data.new" && \
-  echo "Copying latest hot backup ${GZIPFILE}" && \
-  cp "${GZIPFILE}" "${DATADIR}/data.new" && \
   cd "${DATADIR}/data.new" && \
-  echo "Extracting..." && \
-  tar xzf $(basename "${GZIPFILE}") && \
-  rm -f $(basename "${GZIPFILE}") && \
+  echo "Extracting latest hot backup ${GZIPFILE}" && \
+  tar xzf "${GZIPFILE}" && \
   cd "${DATADIR}" && \
   "${DATADIR}/stop" && \
   mv "${DATADIR}/data" "${DATADIR}/data.old" && \
