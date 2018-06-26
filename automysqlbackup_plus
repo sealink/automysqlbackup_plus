@@ -229,7 +229,12 @@ fi
 
 # Database dump function
 dbdump () {
-	${MYSQLDUMP} --single-transaction --quick --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} ${OPT} ${1} > ${2}
+	# Use new, MySQL 5.6+ compliant auth
+	if [ "${LOGINPATH}" ]; then
+		${MYSQLDUMP} --login-path=${LOGINPATH} --single-transaction --quick ${OPT} ${1} > ${2}
+	else
+		${MYSQLDUMP} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --single-transaction --quick ${OPT} ${1} > ${2}
+	fi
 	return $?
 }
 
@@ -293,7 +298,11 @@ copylatest () {
 
 backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
-    INNO_OPTS="--user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST}"
+    if [ "${LOGINPATH}" ]; then
+        INNO_OPTS="--login-path=${LOGINPATH} ${DEFAULTS_FILE_OPTION}"
+    else
+        INNO_OPTS="--user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST}"
+    fi
     FNAME="${2}.tar.gz"
     if [ "${APPLYLOG}" = "yes" ]; then
       hotbackup_with_applylog "${INNO_OPTS}" "${FNAME}"
@@ -357,7 +366,12 @@ fi
 # Keep it as is if HOTBACKUP is used. This will only be used as part of the file/directory name
 if [ "${HOTBACKUP}" != "yes" ] && [ "${DBNAMES}" = "all" ]; then
 
-	DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+    # Use new, MySQL 5.6+ compliant auth
+    if [ "${LOGINPATH}" ]; then
+        DBNAMES="`${MYSQL} --login-path=${LOGINPATH} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+    else
+        DBNAMES="`${MYSQL} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST} --batch --skip-column-names -e "show databases"| ${SED} 's/ /%/g'`"
+    fi
 
 	# If DBs are excluded
 	for exclude in ${DBEXCLUDE}
