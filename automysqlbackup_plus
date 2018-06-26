@@ -143,7 +143,7 @@ while [ $# -gt 0 ]; do
 				source "$2"
 				shift 2
 			else
-				${ECHO} "Ureadable config file \"$2\""
+				${ECHO} "Unreadable config file \"$2\""
 				exit 1
 			fi
 			;;
