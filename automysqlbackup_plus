@@ -299,9 +299,9 @@ copylatest () {
 backup_and_compress () {
   if [ "${HOTBACKUP}" = "yes" ]; then
     if [ "${LOGINPATH}" ]; then
-        INNO_OPTS="--login-path=${LOGINPATH} ${DEFAULTS_FILE_OPTION}"
+        INNO_OPTS="${DEFAULTS_FILE_OPTION} --login-path=${LOGINPATH}"
     else
-        INNO_OPTS="--user=${USERNAME} --password=${PASSWORD} ${DEFAULTS_FILE_OPTION} --host=${DBHOST}"
+        INNO_OPTS="${DEFAULTS_FILE_OPTION} --user=${USERNAME} --password=${PASSWORD} --host=${DBHOST}"
     fi
     FNAME="${2}.tar.gz"
     if [ "${APPLYLOG}" = "yes" ]; then
